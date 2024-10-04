@@ -1,0 +1,8 @@
+[package]
+name = "sdl2_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sdl2 = { version = "0.37.0", features = ["image"] }
+clap = { version = "4.3.10", features = ["derive"] }
