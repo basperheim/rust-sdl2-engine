@@ -1,0 +1,37 @@
+{
+  "window": { "width": 800, "height": 600, "background": "path/to/background.jpg" },
+  "players": [
+    { "id": "1", "owner": "Player 1", "isHuman": true },
+    { "id": "2", "owner": "Player 2", "isHuman": false }
+  ],
+  "sprites": [
+    {
+      "id": "1",
+      "playerId": "1",
+      "images": ["path/to/team1-sprite-1.png", "path/to/team1-sprite-1.png"],
+      "location": { "x": 50, "y": 100 },
+      "health": 100
+    },
+    {
+      "id": "2",
+      "playerId": "1",
+      "images": ["path/to/team1-sprite-1.png", "path/to/team1-sprite-1.png"],
+      "location": { "x": 50, "y": 200 },
+      "health": 100
+    },
+    {
+      "id": "3",
+      "playerId": "2",
+      "images": ["path/to/team1-sprite-2.png", "path/to/team1-sprite-2.png"],
+      "location": { "x": 400, "y": 100 },
+      "health": 100
+    },
+    {
+      "id": "4",
+      "playerId": "2",
+      "images": ["path/to/team1-sprite-2.png", "path/to/team1-sprite-2.png"],
+      "location": { "x": 400, "y": 200 },
+      "health": 100
+    }
+  ]
+}

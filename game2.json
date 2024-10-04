@@ -1,0 +1,21 @@
+{
+  "window": { "width": 800, "height": 600, "background": "path/to/background.jpg" },
+  "sprites": [
+    {
+      "images": ["path/to/team1-sprite-1.png", "path/to/team1-sprite-1.png"],
+      "location": { "x": 50, "y": 100 }
+    },
+    {
+      "images": ["path/to/team1-sprite-1.png", "path/to/team1-sprite-1.png"],
+      "location": { "x": 50, "y": 200 }
+    },
+    {
+      "images": ["path/to/team1-sprite-2.png", "path/to/team1-sprite-2.png"],
+      "location": { "x": 400, "y": 100 }
+    },
+    {
+      "images": ["path/to/team1-sprite-2.png", "path/to/team1-sprite-2.png"],
+      "location": { "x": 400, "y": 200 }
+    }
+  ]
+}
