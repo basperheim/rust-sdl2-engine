@@ -32,8 +32,12 @@ impl<'a> TextureManager<'a> {
     }
 
     fn load_texture(&mut self, path: &str) -> Result<&Texture<'a>, String> {
+        println!("Attempting to load texture: {}", path);  // Debugging line
         if !self.textures.contains_key(path) {
-            let texture = self.texture_creator.load_texture(path)?;
+            let texture = self.texture_creator.load_texture(path).map_err(|e| {
+                eprintln!("Error loading texture '{}': {}", path, e);
+                e.to_string()
+            })?;
             self.textures.insert(path.to_string(), texture);
         }
         Ok(self.textures.get(path).unwrap())
@@ -49,6 +53,7 @@ struct WindowConfig {
 
 #[derive(Deserialize, Serialize, Clone)]
 struct SpriteConfig {
+    id: String,
     images: Vec<String>,
     location: Point,
     #[serde(default = "default_frame_delay")]
@@ -142,27 +147,58 @@ fn main() -> Result<(), String> {
         match rx.try_recv() {
             Ok(input) => {
                 match parse_game_state(&input) {
-                    Ok(mut state) => {
+                    Ok(mut new_state) => {
                         // Resize window if necessary
                         let (current_width, current_height) = canvas.output_size()?;
-                        if state.window.width != current_width || state.window.height != current_height {
+                        if new_state.window.width != current_width || new_state.window.height != current_height {
                             canvas
                                 .window_mut()
-                                .set_size(state.window.width, state.window.height)
+                                .set_size(new_state.window.width, new_state.window.height)
                                 .map_err(|e| e.to_string())?;
                         }
 
                         // Update frame duration based on FPS
-                        frame_duration = Duration::from_millis(1000 / state.fps());
+                        frame_duration = Duration::from_millis(1000 / new_state.fps());
 
-                        // Initialize animation fields for sprites
-                        for sprite in &mut state.sprites {
-                            sprite.current_frame = 0;
-                            sprite.last_update = 0;
+                        if let Some(existing_state) = &mut game_state {
+                            // Update window config
+                            existing_state.window = new_state.window;
+
+                            // Take ownership of existing_state.sprites and create a HashMap
+                            let mut existing_sprites_map: HashMap<String, SpriteConfig> = existing_state.sprites
+                                .drain(..)
+                                .map(|sprite| (sprite.id.clone(), sprite))
+                                .collect();
+
+                            // Prepare a new vector for updated sprites
+                            let mut updated_sprites = Vec::new();
+
+                            // Process each sprite in new_state.sprites
+                            for mut new_sprite in new_state.sprites {
+                                if let Some(mut existing_sprite) = existing_sprites_map.remove(&new_sprite.id) {
+                                    // Update fields while preserving animation state
+                                    existing_sprite.images = new_sprite.images;
+                                    existing_sprite.location = new_sprite.location;
+                                    existing_sprite.frame_delay = new_sprite.frame_delay;
+                                    updated_sprites.push(existing_sprite);
+                                } else {
+                                    // New sprite, initialize animation fields
+                                    new_sprite.current_frame = 0;
+                                    new_sprite.last_update = 0;
+                                    updated_sprites.push(new_sprite);
+                                }
+                            }
+
+                            // Update existing_state.sprites with the updated sprites
+                            existing_state.sprites = updated_sprites;
+                        } else {
+                            // No existing game_state, so initialize it
+                            for sprite in &mut new_state.sprites {
+                                sprite.current_frame = 0;
+                                sprite.last_update = 0;
+                            }
+                            game_state = Some(new_state);
                         }
-
-                        // Update game state
-                        game_state = Some(state);
                     }
                     Err(e) => {
                         eprintln!("Failed to parse game state: {}", e);
@@ -172,7 +208,6 @@ fn main() -> Result<(), String> {
             Err(TryRecvError::Empty) => {}
             Err(TryRecvError::Disconnected) => break 'running,
         }
-
         // Handle events
         for event in event_pump.poll_iter() {
             match event {

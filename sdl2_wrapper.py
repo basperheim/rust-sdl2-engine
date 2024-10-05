@@ -39,10 +39,12 @@ def main():
         },
         "sprites": [
             {
+                "id": "tank1",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
                 "location": { "x": 100, "y": 100 }
             },
             {
+                "id": "tank2",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
                 "location": { "x": 200, "y": 150 }
             }
@@ -93,19 +95,22 @@ def main():
 
     # Keep the main thread alive while the subprocess runs
     try:
-        while process.poll() is None:
-            # Update game state as needed
-            test_x = game_state['sprites'][0]['location']['x']
-            if test_x < game_state['window']['width']:
-                game_state['sprites'][0]['location']['x'] += 1
-            else:
-                game_state['sprites'][0]['location']['x'] = 0
 
-            # Encode the game state
-            json_str = json.dumps(game_state)
+        # Create a new mutable copy for updates
+        updated_game_state = json.loads(json.dumps(game_state))
+
+        while process.poll() is None:
+            # Update sprite positions
+            tank1_x = updated_game_state['sprites'][0]['location']['x']
+            if tank1_x < updated_game_state['window']['width']:
+                updated_game_state['sprites'][0]['location']['x'] += 1
+            else:
+                updated_game_state['sprites'][0]['location']['x'] = 0
+
+            # Encode the updated game state
+            json_str = json.dumps(updated_game_state)
             encoded = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
             send_game_state(encoded)
-
             fps = int(game_state.get('fps', 20))
             time.sleep(1 / fps)
     except KeyboardInterrupt:
