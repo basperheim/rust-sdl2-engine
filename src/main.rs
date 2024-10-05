@@ -9,14 +9,16 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
 use sdl2::event::Event;
-use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::{Canvas, Texture, TextureCreator};
 use sdl2::video::{Window, WindowContext};
+use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
 
 const SPRITE_WIDTH: u32 = 64;
 const SPRITE_HEIGHT: u32 = 64;
+const DEFAULT_TITLE: &str = "Learn Programming 2D Game Engine";
+const DEFAULT_ICON: &str = "images/learn-programming-logo-128px.png";
 
 struct TextureManager<'a> {
     textures: HashMap<String, Texture<'a>>,
@@ -49,6 +51,18 @@ struct WindowConfig {
     width: u32,
     height: u32,
     background: String,
+    #[serde(default = "default_title")]
+    title: String,
+    #[serde(default = "default_icon_path")]
+    icon_path: String,
+}
+
+fn default_title() -> String {
+    DEFAULT_TITLE.to_string()
+}
+
+fn default_icon_path() -> String {
+    DEFAULT_ICON.to_string()
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -87,6 +101,27 @@ impl GameState {
     }
 }
 
+// Default icon
+const ICON: &[u8] = include_bytes!("../images/learn-programming-logo-128px.png");
+fn set_game_icon(canvas: &mut Canvas<Window>, file_path: &str) -> Result<(), String> {
+    let icon_surface = sdl2::rwops::RWops::from_file(file_path, "r")
+        .and_then(|rwops| rwops.load())
+        .or_else(|e| {
+            eprintln!("Error loading icon from file '{}': {}", file_path, e);
+            // Fallback to embedded bytes if file loading fails
+            sdl2::rwops::RWops::from_bytes(ICON)
+                .and_then(|rwops| rwops.load())  // Here, `load()` is used, ensure `ImageRWops` is imported
+                .map_err(|e| {
+                    eprintln!("Error loading embedded icon: {}", e);
+                    e.to_string()
+                })
+        })?;
+
+    // Set the icon for the window
+    canvas.window_mut().set_icon(icon_surface);
+    Ok(())
+}
+
 fn parse_game_state(encoded_data: &str) -> Result<GameState, serde_json::Error> {
     let decoded = STANDARD.decode(encoded_data).expect("Failed to decode base64");
     let json_str = String::from_utf8(decoded).expect("Invalid UTF-8 sequence");
@@ -98,9 +133,9 @@ fn main() -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
-    // Create a window with default size
+    // Create a window with a default title and size
     let window = video_subsystem
-        .window("Simple 2D Renderer", 800, 600)
+        .window(DEFAULT_TITLE, 800, 600)
         .position_centered()
         .build()
         .map_err(|e| e.to_string())?;
@@ -141,6 +176,7 @@ fn main() -> Result<(), String> {
     let mut game_state: Option<GameState> = None;
     let mut frame_duration = Duration::from_millis(16); // Default to ~60 FPS
     let mut last_frame_time = Instant::now();
+    let mut icon_set = false;
 
     'running: loop {
         // Non-blocking receive
@@ -191,23 +227,42 @@ fn main() -> Result<(), String> {
 
                             // Update existing_state.sprites with the updated sprites
                             existing_state.sprites = updated_sprites;
+
+                            // Update the window title
+                            canvas.window_mut().set_title(&existing_state.window.title).map_err(|e| e.to_string())?;
+
+                            // Set the icon if not already set
+                            if !icon_set {
+                                set_game_icon(&mut canvas, &existing_state.window.icon_path)?;
+                                icon_set = true; // Update the flag
+                            }
+
                         } else {
-                            // No existing game_state, so initialize it
+                            // No existing game_state, so initialize it and set the title and icon
                             for sprite in &mut new_state.sprites {
                                 sprite.current_frame = 0;
                                 sprite.last_update = 0;
                             }
                             game_state = Some(new_state);
+
+                            // Set the window title and icon for the first time
+                            canvas.window_mut().set_title(&game_state.as_ref().unwrap().window.title).map_err(|e| e.to_string())?;
+
+                            if !icon_set {
+                                set_game_icon(&mut canvas, &game_state.as_ref().unwrap().window.icon_path)?;
+                                icon_set = true; // Update the flag
+                            }
                         }
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to parse game state: {}", e);
-                    }
-                }
-            }
-            Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => break 'running,
+                   }
+                   Err(e) => {
+                       eprintln!("Failed to parse game state: {}", e);
+                   }
+               }
+           }
+           Err(TryRecvError::Empty) => {}
+           Err(TryRecvError::Disconnected) => break 'running,
         }
+
         // Handle events
         for event in event_pump.poll_iter() {
             match event {

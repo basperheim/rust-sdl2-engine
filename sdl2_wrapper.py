@@ -35,21 +35,25 @@ def main():
         "window": {
             "width": 800,
             "height": 600,
-            "background": "images/background.jpeg"
+            "title": "My Game",
+            "background": "images/background.jpeg",
+            "icon_path": "images/cute-bunny.png"
         },
         "sprites": [
             {
                 "id": "tank1",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
-                "location": { "x": 100, "y": 100 }
+                "location": { "x": 100, "y": 100 },
+                "frame_rate": 3000
             },
             {
                 "id": "tank2",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
-                "location": { "x": 200, "y": 150 }
+                "location": { "x": 200, "y": 150 },
+                "frame_rate": 100
             }
         ],
-        "fps": 60
+        "fps": 30
     }
 
     # Function to send the game state to the Rust process
@@ -111,7 +115,7 @@ def main():
             json_str = json.dumps(updated_game_state)
             encoded = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
             send_game_state(encoded)
-            fps = int(game_state.get('fps', 20))
+            fps = int(game_state.get('fps', 100))
             time.sleep(1 / fps)
     except KeyboardInterrupt:
         print("Terminating Rust process.")
