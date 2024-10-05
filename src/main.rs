@@ -32,7 +32,7 @@ impl<'a> TextureManager<'a> {
     }
 
     fn load_texture(&mut self, path: &str) -> Result<&Texture<'a>, String> {
-        println!("Attempting to load texture: {}", path);  // Debugging line
+        // println!("Attempting to load texture: {}", path);  // Debugging line
         if !self.textures.contains_key(path) {
             let texture = self.texture_creator.load_texture(path).map_err(|e| {
                 eprintln!("Error loading texture '{}': {}", path, e);
