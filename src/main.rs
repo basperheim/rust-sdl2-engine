@@ -9,7 +9,6 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
 use sdl2::event::Event;
-// Removed the unused import: `use sdl2::keyboard::Keycode;`
 use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
@@ -34,8 +33,7 @@ impl<'a> TextureManager<'a> {
 
     fn load_texture(&mut self, path: &str) -> Result<&Texture<'a>, String> {
         if !self.textures.contains_key(path) {
-            // Map the error to String using `map_err`
-            let texture = self.texture_creator.load_texture(path).map_err(|e| e.to_string())?;
+            let texture = self.texture_creator.load_texture(path)?;
             self.textures.insert(path.to_string(), texture);
         }
         Ok(self.textures.get(path).unwrap())
@@ -50,19 +48,9 @@ struct WindowConfig {
 }
 
 #[derive(Deserialize)]
-struct Player {
-    id: String,
-    owner: String,
-    isHuman: bool,
-}
-
-#[derive(Deserialize)]
 struct SpriteConfig {
-    id: String,
-    playerId: String,
     images: Vec<String>,
     location: Point,
-    health: u32,
 }
 
 #[derive(Deserialize)]
@@ -74,8 +62,14 @@ struct Point {
 #[derive(Deserialize)]
 struct GameState {
     window: WindowConfig,
-    players: Vec<Player>,
     sprites: Vec<SpriteConfig>,
+    fps: Option<u64>,
+}
+
+impl GameState {
+    fn fps(&self) -> u64 {
+        self.fps.unwrap_or(60)
+    }
 }
 
 fn parse_game_state(encoded_data: &str) -> Result<GameState, serde_json::Error> {
@@ -86,12 +80,12 @@ fn parse_game_state(encoded_data: &str) -> Result<GameState, serde_json::Error> 
 
 fn main() -> Result<(), String> {
     // Initialize SDL2
-    let sdl_context = sdl2::init().map_err(|e| e.to_string())?;
-    let video_subsystem = sdl_context.video().map_err(|e| e.to_string())?;
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
     // Create a window with default size
     let window = video_subsystem
-        .window("Simple 2D Renderer", 800, 600) // Default size
+        .window("Simple 2D Renderer", 800, 600)
         .position_centered()
         .build()
         .map_err(|e| e.to_string())?;
@@ -100,29 +94,28 @@ fn main() -> Result<(), String> {
     let mut canvas: Canvas<Window> = window
         .into_canvas()
         .accelerated()
-        .present_vsync() // Synchronize with the display's refresh rate
+        .present_vsync()
         .build()
         .map_err(|e| e.to_string())?;
 
     // Initialize SDL2_image
-    let _image_context = image::init(InitFlag::PNG | InitFlag::JPG).map_err(|e| e.to_string())?;
+    let _image_context = image::init(InitFlag::PNG | InitFlag::JPG)?;
 
     // Initialize the texture manager
     let texture_creator = canvas.texture_creator();
     let mut texture_manager = TextureManager::new(&texture_creator);
 
     // Set up event handling
-    let mut event_pump = sdl_context.event_pump().map_err(|e| e.to_string())?;
+    let mut event_pump = sdl_context.event_pump()?;
 
     // Set up channel for non-blocking input
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx): (mpsc::Sender<String>, mpsc::Receiver<String>) = mpsc::channel();
 
     // Spawn a thread to read from stdin
     thread::spawn(move || {
         let stdin = io::stdin();
         for line in stdin.lock().lines() {
             if let Ok(input) = line {
-                // It's good practice to handle potential send errors
                 if tx.send(input).is_err() {
                     break;
                 }
@@ -131,6 +124,7 @@ fn main() -> Result<(), String> {
     });
 
     let mut game_state: Option<GameState> = None;
+    let mut frame_duration = Duration::from_millis(16); // Default to ~60 FPS
 
     'running: loop {
         // Non-blocking receive
@@ -138,9 +132,8 @@ fn main() -> Result<(), String> {
             Ok(input) => {
                 match parse_game_state(&input) {
                     Ok(state) => {
-                        // **Use `state` before moving it into `game_state`**
                         // Resize window if necessary
-                        let (current_width, current_height) = canvas.output_size().map_err(|e| e.to_string())?;
+                        let (current_width, current_height) = canvas.output_size()?;
                         if state.window.width != current_width || state.window.height != current_height {
                             canvas
                                 .window_mut()
@@ -148,7 +141,10 @@ fn main() -> Result<(), String> {
                                 .map_err(|e| e.to_string())?;
                         }
 
-                        // Now move `state` into `game_state`
+                        // Update frame duration based on FPS
+                        frame_duration = Duration::from_millis(1000 / state.fps());
+
+                        // Update game state
                         game_state = Some(state);
                     }
                     Err(e) => {
@@ -195,7 +191,7 @@ fn main() -> Result<(), String> {
         if let Some(ref state) = game_state {
             // Render background
             let bg_texture = texture_manager.load_texture(&state.window.background)?;
-            canvas.copy(&bg_texture, None, None).map_err(|e| e.to_string())?;
+            canvas.copy(&bg_texture, None, None)?;
 
             // Render sprites
             for sprite_config in &state.sprites {
@@ -209,7 +205,7 @@ fn main() -> Result<(), String> {
                     SPRITE_WIDTH,
                     SPRITE_HEIGHT,
                 );
-                canvas.copy(&texture, None, Some(position)).map_err(|e| e.to_string())?;
+                canvas.copy(&texture, None, Some(position))?;
             }
         }
 
@@ -217,7 +213,7 @@ fn main() -> Result<(), String> {
         canvas.present();
 
         // Frame rate control
-        ::std::thread::sleep(Duration::from_millis(16)); // ~60 FPS
+        ::std::thread::sleep(frame_duration);
     }
 
     Ok(())
