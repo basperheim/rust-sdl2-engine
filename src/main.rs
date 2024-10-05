@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
@@ -40,26 +40,36 @@ impl<'a> TextureManager<'a> {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct WindowConfig {
     width: u32,
     height: u32,
     background: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct SpriteConfig {
     images: Vec<String>,
     location: Point,
+    #[serde(default = "default_frame_delay")]
+    frame_delay: u64, // in milliseconds
+    #[serde(skip)]
+    current_frame: usize,
+    #[serde(skip)]
+    last_update: u128, // Using u128 to store milliseconds since UNIX epoch
 }
 
-#[derive(Deserialize)]
+fn default_frame_delay() -> u64 {
+    100 // Default to 100ms
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 struct Point {
     x: i32,
     y: i32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct GameState {
     window: WindowConfig,
     sprites: Vec<SpriteConfig>,
@@ -125,13 +135,14 @@ fn main() -> Result<(), String> {
 
     let mut game_state: Option<GameState> = None;
     let mut frame_duration = Duration::from_millis(16); // Default to ~60 FPS
+    let mut last_frame_time = Instant::now();
 
     'running: loop {
         // Non-blocking receive
         match rx.try_recv() {
             Ok(input) => {
                 match parse_game_state(&input) {
-                    Ok(state) => {
+                    Ok(mut state) => {
                         // Resize window if necessary
                         let (current_width, current_height) = canvas.output_size()?;
                         if state.window.width != current_width || state.window.height != current_height {
@@ -143,6 +154,12 @@ fn main() -> Result<(), String> {
 
                         // Update frame duration based on FPS
                         frame_duration = Duration::from_millis(1000 / state.fps());
+
+                        // Initialize animation fields for sprites
+                        for sprite in &mut state.sprites {
+                            sprite.current_frame = 0;
+                            sprite.last_update = 0;
+                        }
 
                         // Update game state
                         game_state = Some(state);
@@ -184,21 +201,36 @@ fn main() -> Result<(), String> {
             }
         }
 
+        // Calculate delta time
+        let now = Instant::now();
+        let delta_time = now.duration_since(last_frame_time).as_millis();
+        last_frame_time = now;
+
         // Clear the screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        if let Some(ref state) = game_state {
+        if let Some(ref mut state) = game_state {
             // Render background
             let bg_texture = texture_manager.load_texture(&state.window.background)?;
             canvas.copy(&bg_texture, None, None)?;
 
             // Render sprites
-            for sprite_config in &state.sprites {
+            for sprite_config in &mut state.sprites {
                 if sprite_config.images.is_empty() {
                     continue; // Skip if there are no images
                 }
-                let texture = texture_manager.load_texture(&sprite_config.images[0])?;
+
+                // Update animation frame
+                sprite_config.frame_delay = sprite_config.frame_delay.max(1); // Ensure frame_delay is at least 1ms
+                sprite_config.last_update += delta_time;
+
+                if sprite_config.last_update >= sprite_config.frame_delay as u128 {
+                    sprite_config.current_frame = (sprite_config.current_frame + 1) % sprite_config.images.len();
+                    sprite_config.last_update = 0;
+                }
+
+                let texture = texture_manager.load_texture(&sprite_config.images[sprite_config.current_frame])?;
                 let position = Rect::new(
                     sprite_config.location.x,
                     sprite_config.location.y,
