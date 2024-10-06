@@ -43,12 +43,14 @@ def main():
             {
                 "id": "tank1",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
+                "size": { 'width': 128, 'height': 128 },
                 "location": { "x": 100, "y": 100 },
                 "frame_rate": 3000
             },
             {
                 "id": "tank2",
                 "images": ["images/tank-1.png", "images/tank-2.png"],
+                "size": { 'width': 64, 'height': 64 },
                 "location": { "x": 200, "y": 150 },
                 "frame_rate": 100
             }
