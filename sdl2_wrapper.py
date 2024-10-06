@@ -66,12 +66,28 @@ def main():
         except Exception as e:
             print(f"Failed to send game state: {e}")
 
+    # Function to parse and react to Rust Output events
+    def process_rust_output(line):
+        print(f"Rust Output: {line.strip()}")
+        if "MouseButtonDown" in line:
+            # Parse mouse click position
+            parts = line.split("at")
+            if len(parts) > 1:
+                position = parts[1].strip().strip("()")
+                x, y = map(int, position.split(","))
+                print(f"Mouse clicked at ({x}, {y})")
+                # Here you could update the game state based on the mouse click
+                # For example, move a sprite to the clicked location
+        elif "Quit" in line:
+            print("Received quit event from Rust process.")
+            process.terminate()
+
     # Function to read events from the Rust process's stdout
     def read_stdout():
         try:
             for line in process.stdout:
                 if line:
-                    print(f"Rust Output: {line.strip()}")
+                    process_rust_output(line.strip())
                 else:
                     break
         except Exception as e:
@@ -101,8 +117,6 @@ def main():
 
     # Keep the main thread alive while the subprocess runs
     try:
-
-        # Create a new mutable copy for updates
         updated_game_state = json.loads(json.dumps(game_state))
 
         while process.poll() is None:
@@ -117,6 +131,7 @@ def main():
             json_str = json.dumps(updated_game_state)
             encoded = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
             send_game_state(encoded)
+
             fps = int(game_state.get('fps', 100))
             time.sleep(1 / fps)
     except KeyboardInterrupt:
