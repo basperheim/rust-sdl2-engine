@@ -15,8 +15,6 @@ use sdl2::render::{Canvas, Texture, TextureCreator};
 use sdl2::video::{Window, WindowContext};
 use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
 
-const SPRITE_WIDTH: u32 = 64;
-const SPRITE_HEIGHT: u32 = 64;
 const DEFAULT_TITLE: &str = "Learn Programming 2D Game Engine";
 const DEFAULT_ICON: &str = "images/learn-programming-logo-128px.png";
 
@@ -66,10 +64,17 @@ fn default_icon_path() -> String {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
+struct SpriteSize {
+    width: u32,
+    height: u32,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 struct SpriteConfig {
     id: String,
     images: Vec<String>,
     location: Point,
+    size: SpriteSize,
     #[serde(default = "default_frame_delay")]
     frame_delay: u64, // in milliseconds
     #[serde(skip)]
@@ -324,8 +329,8 @@ fn main() -> Result<(), String> {
                 let position = Rect::new(
                     sprite_config.location.x,
                     sprite_config.location.y,
-                    SPRITE_WIDTH,
-                    SPRITE_HEIGHT,
+                    sprite_config.size.width,
+                    sprite_config.size.height
                 );
                 canvas.copy(&texture, None, Some(position))?;
             }
