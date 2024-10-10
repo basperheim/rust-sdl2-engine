@@ -3,6 +3,9 @@ use std::io::{self, BufRead, Write};
 use std::sync::mpsc::{self, TryRecvError};
 use std::thread;
 use std::time::{Duration, Instant};
+use std::env;
+use std::path::Path;
+use std::fs;
 
 use serde::{Deserialize, Serialize};
 use base64::Engine;
@@ -16,9 +19,6 @@ use sdl2::video::{Window, WindowContext};
 use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
 use sdl2::ttf::{Font, Sdl2TtfContext};
 use sdl2::render::TextureQuery;
-
-const DEFAULT_TITLE: &str = "Learn Programming 2D Game Engine";
-const DEFAULT_ICON: &str = "images/learn-programming-logo-128px.png";
 
 struct TextureManager<'a> {
     textures: HashMap<String, Texture<'a>>,
@@ -58,11 +58,12 @@ struct WindowConfig {
 }
 
 fn default_title() -> String {
-    DEFAULT_TITLE.to_string()
+    "Learn Programming 2D Game Engine".to_string()
 }
 
 fn default_icon_path() -> String {
-    DEFAULT_ICON.to_string()
+    let images_dir: String = env::var("IMAGES_DIR").unwrap_or_else(|_| String::from("images"));
+    Path::new(&images_dir).join("learn-programming-logo-128px.png").to_string_lossy().to_string()
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -160,20 +161,33 @@ impl GameState {
     }
 }
 
-// Default icon
-const ICON: &[u8] = include_bytes!("../images/learn-programming-logo-128px.png");
 fn set_game_icon(canvas: &mut Canvas<Window>, file_path: &str) -> Result<(), String> {
+    // Attempt to load the icon from the specified file path
     let icon_surface = sdl2::rwops::RWops::from_file(file_path, "r")
         .and_then(|rwops| rwops.load())
         .or_else(|e| {
             eprintln!("Error loading icon from file '{}': {}", file_path, e);
-            // Fallback to embedded bytes if file loading fails
-            sdl2::rwops::RWops::from_bytes(ICON)
-                .and_then(|rwops| rwops.load())  // Here, `load()` is used, ensure `ImageRWops` is imported
-                .map_err(|e| {
-                    eprintln!("Error loading embedded icon: {}", e);
-                    e.to_string()
-                })
+
+            // Construct the fallback icon path
+            let images_dir: String = env::var("IMAGES_DIR").unwrap_or_else(|_| String::from("images"));
+            let fallback_icon_path = Path::new(&images_dir).join("learn-programming-logo-128px.png");
+
+            // Read the fallback icon as bytes
+            match fs::read(fallback_icon_path.clone()) { // Clone the path before moving it
+                Ok(fallback_icon_bytes) => {
+                    // Convert the bytes to RWops
+                    sdl2::rwops::RWops::from_bytes(&fallback_icon_bytes)
+                        .and_then(|rwops| rwops.load())
+                        .map_err(|e| {
+                            eprintln!("Error loading embedded icon: {}", e);
+                            e.to_string()
+                        })
+                },
+                Err(e) => {
+                    eprintln!("Error reading fallback icon from path '{}': {}", fallback_icon_path.display(), e);
+                    Err(e.to_string())
+                }
+            }
         })?;
 
     // Set the icon for the window
@@ -188,6 +202,9 @@ fn parse_game_state(encoded_data: &str) -> Result<GameState, serde_json::Error> 
 }
 
 fn main() -> Result<(), String> {
+    let images_dir: String = env::var("IMAGES_DIR").unwrap_or_else(|_| String::from("images"));
+    let fonts_dir: String = env::var("FONTS_DIR").unwrap_or_else(|_| String::from("fonts"));
+
     // Initialize SDL2
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
@@ -200,7 +217,7 @@ fn main() -> Result<(), String> {
 
     // Create a window with a default title and size
     let window = video_subsystem
-        .window(DEFAULT_TITLE, 800, 600)
+        .window(&default_title(), 800, 600)
         .position_centered()
         .build()
         .map_err(|e| e.to_string())?;
@@ -369,8 +386,14 @@ fn main() -> Result<(), String> {
         canvas.clear();
 
         if let Some(ref mut state) = game_state {
+            // Construct the background image path
+            let background_path = Path::new(&images_dir)
+                .join(&state.window.background)
+                .to_string_lossy()
+                .to_string();
+
             // Render background
-            let bg_texture = texture_manager.load_texture(&state.window.background)?;
+            let bg_texture = texture_manager.load_texture(&background_path)?;
             canvas.copy(&bg_texture, None, None)?;
 
             // Render sprites
@@ -388,13 +411,22 @@ fn main() -> Result<(), String> {
                     sprite_config.last_update = 0;
                 }
 
-                let texture = texture_manager.load_texture(&sprite_config.images[sprite_config.current_frame])?;
+                // Construct the image path
+                let image_path = Path::new(&images_dir)
+                    .join(&sprite_config.images[sprite_config.current_frame])
+                    .to_string_lossy()
+                    .to_string();
+
+                // Load the texture
+                let texture = texture_manager.load_texture(&image_path)?;
+
                 let position = Rect::new(
                     sprite_config.location.x,
                     sprite_config.location.y,
                     sprite_config.size.width,
                     sprite_config.size.height
                 );
+
                 canvas.copy(&texture, None, Some(position))?;
             }
 
@@ -402,9 +434,7 @@ fn main() -> Result<(), String> {
             for text_config in &state.text {
                 // Determine the font to use
                 let font_family = text_config.font_family.as_ref().unwrap_or(&state.default_font);
-                let font_path = format!("fonts/{}", font_family);
-
-                // Load the font
+                let font_path = Path::new(&fonts_dir).join(font_family).to_string_lossy().to_string();
                 let font = font_manager.load_font(&font_path, text_config.size)?;
 
                 // Render the text surface

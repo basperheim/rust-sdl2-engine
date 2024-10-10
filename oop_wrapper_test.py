@@ -141,13 +141,13 @@ def main():
         SCREEN['width'],
         SCREEN['height'],
         title="My Game",
-        background="images/background.jpeg",
-        icon="images/cute-bunny.png", fps=60
+        background="background.jpeg",
+        icon="cute-bunny.png", fps=60
     )
 
     # Create sprite instances
-    tank1 = Sprite("tank1", ["images/tank-1.png", "images/tank-2.png"], {"x": 100, "y": 100}, {'width': 64, 'height': 64})
-    tank2 = Sprite("tank2", ["images/tank-1.png", "images/tank-2.png"], {"x": 200, "y": 150}, {'width': 128, 'height': 128})
+    tank1 = Sprite("tank1", ["tank-1.png", "tank-2.png"], {"x": 100, "y": 100}, {'width': 64, 'height': 64})
+    tank2 = Sprite("tank2", ["tank-1.png", "tank-2.png"], {"x": 200, "y": 150}, {'width': 128, 'height': 128})
 
     try:
         while engine.is_running:
