@@ -262,6 +262,8 @@ fn main() -> Result<(), String> {
 
     let mut mouse_x = 0;
     let mut mouse_y = 0;
+    let mut last_mouse_motion_time = Instant::now();
+    let mouse_motion_interval = Duration::from_millis(200);
 
     'running: loop {
         // Non-blocking receive
@@ -352,6 +354,7 @@ fn main() -> Result<(), String> {
         }
 
         // Handle events
+        let mut mouse_motion_buffer = Vec::new();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
@@ -365,9 +368,12 @@ fn main() -> Result<(), String> {
                     mouse_x = x;
                     mouse_y = y;
 
-                    // let json_output = format!(r#"{{"action": "mouse_motion", "x": {}, "y": {}}}"#, x, y);
-                    // println!("{}", json_output);
-                    // io::stdout().flush().unwrap();
+                    // Check if enough time has passed since the last event
+                    if last_mouse_motion_time.elapsed() >= mouse_motion_interval {
+                        // Update the last emitted time
+                        mouse_motion_buffer.push((mouse_x, mouse_y));
+                        last_mouse_motion_time = Instant::now();
+                    }
                 }
 
                 Event::KeyDown { keycode: Some(keycode), .. } => {
@@ -401,6 +407,15 @@ fn main() -> Result<(), String> {
         let now = Instant::now();
         let delta_time = now.duration_since(last_frame_time).as_millis();
         last_frame_time = now;
+
+        // After processing events, emit buffered mouse motion events
+        if !mouse_motion_buffer.is_empty() {
+            for (x, y) in mouse_motion_buffer.drain(..) {
+                let json_output = format!(r#"{{"action": "mouse_motion", "x": {}, "y": {}}}"#, x, y);
+                println!("{}", json_output);
+                io::stdout().flush().unwrap();
+            }
+        }
 
         // Clear the screen
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -450,9 +465,17 @@ fn main() -> Result<(), String> {
 
                 // Check for hover
                 if position.contains_point((mouse_x, mouse_y)) {
-                    let json_output = format!(r#"{{"action": "hover", "sprite": "{}"}}"#, sprite_config.id);
-                    println!("{}", json_output);
-                    io::stdout().flush().unwrap();
+                    if last_mouse_motion_time.elapsed() >= mouse_motion_interval {
+                        let json_output = format!(
+                            r#"{{"action": "hover", "sprite": "{}", "x": {}, "y": {}}}"#,
+                            sprite_config.id,
+                            mouse_x,
+                            mouse_y
+                        );
+                        println!("{}", json_output);
+                        io::stdout().flush().unwrap();
+                        last_mouse_motion_time = Instant::now();
+                    }
                 }
 
                 canvas.copy(&texture, None, Some(position))?;
