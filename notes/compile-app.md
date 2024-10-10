@@ -15,7 +15,7 @@
 
 ### Example: Using PyInstaller
 
-Here’s a basic example of how to use `PyInstaller` to create a standalone executable for your Python high-level wrapper:
+Here's a basic example of how to use `PyInstaller` to create a standalone executable for your Python high-level wrapper:
 
 1. **Install PyInstaller**:
 
@@ -34,7 +34,7 @@ Here’s a basic example of how to use `PyInstaller` to create a standalone exec
    - `--add-data`: Includes additional data files (like images) in the executable.
 
 3. **Running the Executable**:
-   After running the command, you’ll find the executable in the `dist` folder. You can distribute this file without needing a Python installation on the target machine.
+   After running the command, you'll find the executable in the `dist` folder. You can distribute this file without needing a Python installation on the target machine.
 
 ### Conclusion
 
