@@ -53,6 +53,7 @@ class GameEngine():
 
     def get_json_state(self) -> dict:
         return {
+            "default_font": "Orbitron-Black.ttf",
             "window": {
                 "width": self.width,
                 "height": self.height,
@@ -61,11 +62,13 @@ class GameEngine():
                 "icon_path": self.icon
             },
             "sprites": [sprite.as_dict() for sprite in self.sprites if sprite is not None],
+            "text": [],
             "fps": self.fps
         }
 
     def start_process(self):
         binary_path = os.path.join('target', 'release', 'sdl2_rust')
+        # binary_path = os.path.join('.', 'sdl2_rust')
 
         if not os.path.isfile(binary_path):
             print(f"Error: Binary not found at {binary_path}")

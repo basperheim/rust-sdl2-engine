@@ -14,7 +14,7 @@ use sdl2::rect::Rect;
 use sdl2::render::{Canvas, Texture, TextureCreator};
 use sdl2::video::{Window, WindowContext};
 use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
-use sdl2::ttf::{self, Font, Sdl2TtfContext};
+use sdl2::ttf::{Font, Sdl2TtfContext};
 use sdl2::render::TextureQuery;
 
 const DEFAULT_TITLE: &str = "Learn Programming 2D Game Engine";
@@ -402,7 +402,7 @@ fn main() -> Result<(), String> {
             for text_config in &state.text {
                 // Determine the font to use
                 let font_family = text_config.font_family.as_ref().unwrap_or(&state.default_font);
-                let font_path = format!("fonts/{}.ttf", font_family);  // Adjust the path as needed
+                let font_path = format!("fonts/{}", font_family);
 
                 // Load the font
                 let font = font_manager.load_font(&font_path, text_config.size)?;
@@ -410,6 +410,7 @@ fn main() -> Result<(), String> {
                 // Render the text surface
                 let color = text_config.color.clone().unwrap_or_default();
                 let sdl_color = Color::RGBA(color.r, color.g, color.b, color.a);
+
                 let surface = font
                     .render(&text_config.content)
                     .blended(sdl_color)
@@ -427,7 +428,7 @@ fn main() -> Result<(), String> {
                 // Set the destination rectangle
                 let target = Rect::new(text_config.location.x, text_config.location.y, width, height);
 
-                // Copy the texture to the canvas
+                // Copy the texture to the canvas without scaling
                 canvas.copy(&texture, None, Some(target))?;
             }
         }

@@ -8,7 +8,7 @@ import threading
 
 def main():
     # Determine the path to the compiled Rust binary
-    binary_path = os.path.join('target', 'debug', 'sdl2_rust')
+    binary_path = os.path.join('target', 'release', 'sdl2_rust')
 
     # Verify that the binary exists
     if not os.path.isfile(binary_path):
@@ -32,6 +32,7 @@ def main():
 
     # Prepare the game state
     game_state = {
+        "default_font": "Tahoma",
         "window": {
             "width": 800,
             "height": 600,
@@ -55,6 +56,23 @@ def main():
                 "frame_rate": 100
             }
         ],
+        "text": [
+                {
+                    "id": "text1",
+                    "font_family": "Orbitron-Black.ttf",
+                    "content": "Hello, world!",
+                    "size": 16,
+                    "color": { "r": 255, "g": 255, "b": 255, "a": 255 },  # Optional, defaults to black
+                    "location": { "x": 5, "y": 5 },
+                },
+                {
+                    "id": "text2",
+                    "font_family": "Orbitron-Black.ttf",
+                    "content": "How are you?",
+                    "size": 16,
+                    "location": { "x": 5, "y": 50 },
+                }
+            ],
         "fps": 30
     }
 
