@@ -260,6 +260,9 @@ fn main() -> Result<(), String> {
     let mut last_frame_time = Instant::now();
     let mut icon_set = false;
 
+    let mut mouse_x = 0;
+    let mut mouse_y = 0;
+
     'running: loop {
         // Non-blocking receive
         match rx.try_recv() {
@@ -352,24 +355,42 @@ fn main() -> Result<(), String> {
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => {
-                    println!("Event: Quit");
+                    let json_output = r#"{"action": "quit"}"#; // JSON for quit event
+                    println!("{}", json_output);
                     io::stdout().flush().unwrap();
                     break 'running;
                 }
+
+                Event::MouseMotion { x, y, .. } => {
+                    mouse_x = x;
+                    mouse_y = y;
+
+                    // let json_output = format!(r#"{{"action": "mouse_motion", "x": {}, "y": {}}}"#, x, y);
+                    // println!("{}", json_output);
+                    // io::stdout().flush().unwrap();
+                }
+
                 Event::KeyDown { keycode: Some(keycode), .. } => {
-                    println!("Event: KeyDown {:?}", keycode);
+                    let json_output = format!(r#"{{"action": "key_down", "keycode": "{:?}"}}"#, keycode);
+                    println!("{}", json_output);
                     io::stdout().flush().unwrap();
                 }
+
                 Event::KeyUp { keycode: Some(keycode), .. } => {
-                    println!("Event: KeyUp {:?}", keycode);
+                    let json_output = format!(r#"{{"action": "key_up", "keycode": "{:?}"}}"#, keycode);
+                    println!("{}", json_output);
                     io::stdout().flush().unwrap();
                 }
+
                 Event::MouseButtonDown { x, y, mouse_btn, .. } => {
-                    println!("Event: MouseButtonDown {:?} at ({}, {})", mouse_btn, x, y);
+                    let json_output = format!(r#"{{"action": "mouse_button_down", "button": "{:?}", "x": {}, "y": {}}}"#, mouse_btn, x, y);
+                    println!("{}", json_output);
                     io::stdout().flush().unwrap();
                 }
+
                 Event::MouseButtonUp { x, y, mouse_btn, .. } => {
-                    println!("Event: MouseButtonUp {:?} at ({}, {})", mouse_btn, x, y);
+                    let json_output = format!(r#"{{"action": "mouse_button_up", "button": "{:?}", "x": {}, "y": {}}}"#, mouse_btn, x, y);
+                    println!("{}", json_output);
                     io::stdout().flush().unwrap();
                 }
                 _ => {}
@@ -426,6 +447,13 @@ fn main() -> Result<(), String> {
                     sprite_config.size.width,
                     sprite_config.size.height
                 );
+
+                // Check for hover
+                if position.contains_point((mouse_x, mouse_y)) {
+                    let json_output = format!(r#"{{"action": "hover", "sprite": "{}"}}"#, sprite_config.id);
+                    println!("{}", json_output);
+                    io::stdout().flush().unwrap();
+                }
 
                 canvas.copy(&texture, None, Some(position))?;
             }

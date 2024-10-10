@@ -107,12 +107,42 @@ class GameEngine():
         try:
             for line in self.process.stdout:
                 if line:
-                    print(f"Rust Output: {line.strip()}")
+                    # Decode the line to a string and strip whitespace
+                    line = line.strip()
+                    print(f"Rust Output: {line}")
 
-                    # Check for a quit event from the Rust output
-                    if "Event: Quit" in line.strip():
-                        print("Received quit event from Rust process.")
-                        self.is_running = False
+                    # Parse the JSON string
+                    try:
+                        event = json.loads(line)  # Deserialize the JSON string
+                        action = event.get("action")
+
+                        # Handle different actions
+                        if action == "quit":
+                            print("Received quit event from Rust process.")
+                            self.is_running = False
+                        elif action == "mouse_motion":
+                            x = event.get("x")
+                            y = event.get("y")
+                            print(f"Mouse moved to: ({x}, {y})")
+                        elif action == "key_down":
+                            keycode = event.get("keycode")
+                            print(f"Key pressed: {keycode}")
+                        elif action == "key_up":
+                            keycode = event.get("keycode")
+                            print(f"Key released: {keycode}")
+                        elif action == "mouse_button_down":
+                            button = event.get("button")
+                            x = event.get("x")
+                            y = event.get("y")
+                            print(f"Mouse button {button} down at ({x}, {y})")
+                        elif action == "mouse_button_up":
+                            button = event.get("button")
+                            x = event.get("x")
+                            y = event.get("y")
+                            print(f"Mouse button {button} up at ({x}, {y})")
+
+                    except json.JSONDecodeError:
+                        print("Failed to decode JSON:", line)
                 else:
                     break
         except Exception as e:
