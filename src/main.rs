@@ -14,11 +14,10 @@ use base64::engine::general_purpose::STANDARD;
 use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::render::{Canvas, Texture, TextureCreator};
+use sdl2::render::{Canvas, Texture, TextureCreator, TextureQuery};
 use sdl2::video::{Window, WindowContext};
 use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
 use sdl2::ttf::{Font, Sdl2TtfContext};
-use sdl2::render::TextureQuery;
 
 struct TextureManager<'a> {
     textures: HashMap<String, Texture<'a>>,
@@ -44,17 +43,6 @@ impl<'a> TextureManager<'a> {
         }
         Ok(self.textures.get(path).unwrap())
     }
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-struct WindowConfig {
-    width: u32,
-    height: u32,
-    background: String,
-    #[serde(default = "default_title")]
-    title: String,
-    #[serde(default = "default_icon_path")]
-    icon_path: String,
 }
 
 fn default_title() -> String {
@@ -144,6 +132,18 @@ impl<'a> FontManager<'a> {
         }
         Ok(self.fonts.get(&key).unwrap())
     }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+struct WindowConfig {
+    width: u32,
+    height: u32,
+    #[serde(default)]
+    background: String, // Defaults to "" if missing
+    #[serde(default = "default_title")]
+    title: String,
+    #[serde(default = "default_icon_path")]
+    icon_path: String,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -417,20 +417,39 @@ fn main() -> Result<(), String> {
             }
         }
 
-        // Clear the screen
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        // Clear the screen to black (with full opacity)
+        canvas.set_draw_color(Color::RGBA(0, 0, 0, 255));
         canvas.clear();
 
         if let Some(ref mut state) = game_state {
-            // Construct the background image path
-            let background_path = Path::new(&images_dir)
-                .join(&state.window.background)
-                .to_string_lossy()
-                .to_string();
+            // Check if the background string is not empty
+            if !state.window.background.trim().is_empty() {
+                // Construct the background image path
+                let background_path = Path::new(&images_dir)
+                    .join(&state.window.background)
+                    .to_string_lossy()
+                    .to_string();
 
-            // Render background
-            let bg_texture = texture_manager.load_texture(&background_path)?;
-            canvas.copy(&bg_texture, None, None)?;
+                // Attempt to load the background texture
+                match texture_manager.load_texture(&background_path) {
+                    Ok(bg_texture) => {
+                        // Attempt to render the background texture
+                        if let Err(e) = canvas.copy(&bg_texture, None, None) {
+                            eprintln!("Failed to render background texture: {}", e);
+                            // The screen remains black as we've already cleared it
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!(
+                            "Failed to load background texture '{}': {}. Falling back to black.",
+                            background_path, e
+                        );
+                    }
+                }
+            } else {
+                // Background is empty; screen remains black
+                // eprintln!("No background defined. Using black background.");
+            }
 
             // Render sprites
             for sprite_config in &mut state.sprites {

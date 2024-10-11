@@ -171,7 +171,8 @@ def main():
         SCREEN['width'],
         SCREEN['height'],
         title="My Game",
-        background="background.jpeg",
+        # background="background.jpeg",
+        background='',
         icon="cute-bunny.png", fps=60
     )
 
