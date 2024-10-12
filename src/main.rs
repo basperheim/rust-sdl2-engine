@@ -15,7 +15,7 @@ use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::{Canvas, Texture, TextureCreator, TextureQuery};
-use sdl2::video::{Window, WindowContext};
+use sdl2::video::{Window, WindowContext, WindowPos};
 use sdl2::image::{self, InitFlag, LoadTexture, ImageRWops};
 use sdl2::ttf::{Font, Sdl2TtfContext};
 
@@ -278,6 +278,9 @@ fn main() -> Result<(), String> {
                                 .window_mut()
                                 .set_size(new_state.window.width, new_state.window.height)
                                 .map_err(|e| e.to_string())?;
+
+                            // Set the window position to (1, 1)
+                            canvas.window_mut().set_position(WindowPos::Positioned(1), WindowPos::Positioned(1));
                         }
 
                         // Update frame duration based on FPS
