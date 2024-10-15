@@ -476,31 +476,37 @@ fn main() -> Result<(), String> {
                     .to_string();
 
                 // Load the texture
-                let texture = texture_manager.load_texture(&image_path)?;
-
-                let position = Rect::new(
-                    sprite_config.location.x,
-                    sprite_config.location.y,
-                    sprite_config.size.width,
-                    sprite_config.size.height
-                );
-
-                // Check for hover
-                if position.contains_point((mouse_x, mouse_y)) {
-                    if last_mouse_motion_time.elapsed() >= mouse_motion_interval {
-                        let json_output = format!(
-                            r#"{{"action": "hover", "sprite": "{}", "x": {}, "y": {}}}"#,
-                            sprite_config.id,
-                            mouse_x,
-                            mouse_y
+                match texture_manager.load_texture(&image_path) {
+                    Ok(texture) => {
+                        let position = Rect::new(
+                            sprite_config.location.x,
+                            sprite_config.location.y,
+                            sprite_config.size.width,
+                            sprite_config.size.height
                         );
-                        println!("{}", json_output);
-                        io::stdout().flush().unwrap();
-                        last_mouse_motion_time = Instant::now();
-                    }
-                }
 
-                canvas.copy(&texture, None, Some(position))?;
+                        // Check for hover
+                        if position.contains_point((mouse_x, mouse_y)) {
+                            if last_mouse_motion_time.elapsed() >= mouse_motion_interval {
+                                let json_output = format!(
+                                    r#"{{"action": "hover", "sprite": "{}", "x": {}, "y": {}}}"#,
+                                    sprite_config.id,
+                                    mouse_x,
+                                    mouse_y
+                                );
+                                println!("{}", json_output);
+                                io::stdout().flush().unwrap();
+                                last_mouse_motion_time = Instant::now();
+                            }
+                        }
+
+                        canvas.copy(&texture, None, Some(position))?;
+                    },
+                    Err(e) => {
+                        // Log the error and the problematic image path
+                        eprintln!("Failed to load texture from '{}': {:?}", image_path, e);
+                    },
+                }
             }
 
             // Render text
