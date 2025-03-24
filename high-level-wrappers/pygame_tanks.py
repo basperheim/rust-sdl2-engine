@@ -22,7 +22,7 @@ class Background(pygame.sprite.Sprite):
 def run_game():
     pygame.init()
     clock = pygame.time.Clock()
-    fps = 60
+    fps = 30
     size = width, height = 800, 600
     screen = pygame.display.set_mode(size)
     pygame.display.set_caption("My Pygame Replica")

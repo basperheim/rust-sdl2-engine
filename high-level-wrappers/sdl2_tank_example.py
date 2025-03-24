@@ -6,9 +6,11 @@ import os
 import sys
 import threading
 
+# Run 'export IMAGES_DIR=images' (or 'set IMAGES_DIR=images' in Win Command Prompt) to set the images dir ENV
+
 def main():
     # Determine the path to the compiled Rust binary
-    binary_path = os.path.join('target', 'release', 'sdl2_rust')
+    binary_path = os.path.join('..', 'target', 'release', 'sdl2_rust')
 
     # Verify that the binary exists
     if not os.path.isfile(binary_path):
@@ -37,20 +39,20 @@ def main():
             "width": 800,
             "height": 600,
             "title": "My Game",
-            "background": "images/background.jpeg",
+            "background": "background.jpeg",
             "icon_path": "images/cute-bunny.png"
         },
         "sprites": [
             {
                 "id": "tank1",
-                "images": ["images/tank-1.png", "images/tank-2.png"],
+                "images": ["tank-1.png", "tank-2.png"],
                 "size": { 'width': 128, 'height': 128 },
                 "location": { "x": 100, "y": 100 },
                 "frame_rate": 3000
             },
             {
                 "id": "tank2",
-                "images": ["images/tank-1.png", "images/tank-2.png"],
+                "images": ["tank-1.png", "tank-2.png"],
                 "size": { 'width': 64, 'height': 64 },
                 "location": { "x": 200, "y": 150 },
                 "frame_rate": 100

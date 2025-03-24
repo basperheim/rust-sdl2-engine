@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Had some issues getting the Rust binary to compile on Apple Silicon, so used to this to move missing SDL2 libs into the Rust project's root dir
+
 source_dir=/opt/homebrew/lib
 target_dir=~/Downloads/Coding-Projects/rust-sdl2-engine/libs
 reg='^libSDL2'
